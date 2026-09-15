@@ -47,6 +47,34 @@
   #dashboard{display:none;}
   #dashboard.show{display:block;}
 
+  /* كارت التتبع المباشر للسائق */
+  .tracking-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .tracking-card h3 { margin: 0; font-size: 16px; }
+  .tracking-card p { margin: 4px 0 0; font-size: 13px; color: var(--ink-mute); }
+  .track-btn {
+    padding: 10px 20px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .2s;
+  }
+
   .layout{display:grid; grid-template-columns:1fr 380px; gap:20px; align-items:start;}
   #adminMap{
     height:620px; border-radius:6px; border:1px solid var(--line); direction:ltr;
@@ -77,6 +105,8 @@
   @media (max-width:900px){
     .layout{grid-template-columns:1fr;}
     #adminMap{height:400px;}
+    .tracking-card { flex-direction: column; text-align: center; }
+    .track-btn { width: 100%; }
   }
 </style>
 </head>
@@ -99,6 +129,17 @@
       <button class="refresh-btn" onclick="loadBookings()">تحديث</button>
     </div>
   </header>
+
+  <!-- كارت التحكم في بث موقع السائق -->
+  <div class="tracking-card">
+    <div>
+      <h3>تتبع الرحلة المباشر (GPS)</h3>
+      <p id="trackingStatus">اضغط على الزر عند بدء الرحلة لمشاركة موقع الأتوبيس اللحظي مع الركاب.</p>
+    </div>
+    <button id="trackBtn" class="track-btn" onclick="toggleDriverTracking('main_trip')">
+      🚀 بدء مشاركة الموقع اللحظي
+    </button>
+  </div>
 
   <div class="layout">
     <div id="adminMap"></div>
@@ -140,6 +181,56 @@
   document.getElementById('pwInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') checkPassword();
   });
+
+  /* --- كود بث موقع السائق اللحظي عبر GPS الموبايل --- */
+  let watchId = null;
+  let isTracking = false;
+
+  async function toggleDriverTracking(tripId) {
+    const btn = document.getElementById('trackBtn');
+    const statusText = document.getElementById('trackingStatus');
+
+    if (!isTracking) {
+      if (!('geolocation' in navigator)) {
+        alert('خدمة الـ GPS غير مدعومة في هذا المتصفح');
+        return;
+      }
+
+      watchId = navigator.geolocation.watchPosition(
+        async (position) => {
+          const { latitude: lat, longitude: lng } = position.coords;
+
+          // إرسال أو تحديث الموقع في Supabase
+          const { error } = await supabaseClient
+            .from('driver_locations')
+            .upsert(
+              { trip_id: tripId, lat: lat, lng: lng, updated_at: new Date() }, 
+              { onConflict: 'trip_id' }
+            );
+
+          if (error) {
+            statusText.innerText = 'خطأ في إرسال الموقع: ' + error.message;
+          } else {
+            statusText.innerText = `جاري بث الموقع بنجاح... آخر تحديث: ${new Date().toLocaleTimeString('ar-EG')}`;
+          }
+        },
+        (err) => {
+          alert('يرجى السماح للمتصفح بالوصول إلى موقع الـ GPS لبدء البث');
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+      );
+
+      isTracking = true;
+      btn.innerText = '🛑 إيقاف مشاركة الموقع';
+      btn.style.background = '#dc3545';
+    } else {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+      isTracking = false;
+      btn.innerText = '🚀 بدء مشاركة الموقع اللحظي';
+      btn.style.background = '#28a745';
+      statusText.innerText = 'تم إيقاف التتبع';
+    }
+  }
 
   function googleMapsLink(lat, lng){
     return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
