@@ -1,272 +1,177 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>لوحة المشرف — The Way</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<style>
-  :root{
-    --ink:#12182B; --ink-mute:#4B5566;
-    --paper:#EDF0EE; --paper-raised:#FFFFFF;
-    --amber:#F2A900; --teal:#1B6E71; --line:#D3D9D5;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Cairo', sans-serif;}
-  .wrap{max-width:1160px; margin:0 auto; padding:28px 32px 60px;}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Way — لوحة المشرف</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 
-  header{display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; flex-wrap:wrap; gap:12px;}
-  .logo{display:flex; align-items:center; gap:9px; font-size:22px; font-weight:800;}
-  .logo .dot{width:9px; height:9px; border-radius:2px; background:var(--teal); display:inline-block;}
-  .badge{font-size:13px; color:var(--ink-mute); background:var(--paper-raised); border:1px solid var(--line); padding:7px 14px; border-radius:5px;}
-  .badge strong{color:var(--ink);}
+    <!-- مكتبة Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  .lock-screen{
-    max-width:360px; margin:120px auto; text-align:center;
-    background:var(--paper-raised); border:1px solid var(--line); border-radius:6px; padding:36px 28px;
-  }
-  .lock-screen h2{font-size:22px; margin:0 0 8px;}
-  .lock-screen p{color:var(--ink-mute); font-size:14px; margin:0 0 18px;}
-  .lock-screen input{
-    width:100%; padding:12px 13px; border:1px solid var(--line); border-radius:5px;
-    font-size:15px; font-family:inherit; margin-bottom:12px; text-align:center;
-  }
-  .lock-screen button{
-    width:100%; padding:12px; background:var(--ink); color:#fff; border:none; border-radius:5px;
-    font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
-  }
-  .lock-screen .err{color:#B3402A; font-size:13px; margin-top:10px; min-height:16px;}
+    <style>
+        :root {
+            --ink: #12182B;
+            --ink-mute: #4B5566;
+            --paper: #EDF0EE;
+            --paper-raised: #FFFFFF;
+            --teal: #1B6E71;
+            --line: #D3D9D5;
+        }
 
-  #dashboard{display:none;}
-  #dashboard.show{display:block;}
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Cairo', sans-serif; padding: 24px; }
+        .container { max-width: 1200px; margin: 0 auto; }
 
-  .layout{display:grid; grid-template-columns:1fr 380px; gap:20px; align-items:start;}
-  #adminMap{
-    height:620px; border-radius:6px; border:1px solid var(--line); direction:ltr;
-  }
-  .leaflet-container{font-family:'Cairo', sans-serif;}
-  .popup-name{font-weight:700; font-size:14px; margin-bottom:4px;}
-  .popup-row{font-size:12.5px; color:#4B5566; margin-top:2px;}
+        /* شاشة كلمة المرور */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(18, 24, 43, 0.95); display: flex; align-items: center; justify-content: center; z-index: 999;
+        }
+        .login-box { background: white; padding: 32px; border-radius: 12px; text-align: center; width: 320px; }
+        .login-box input { width: 100%; padding: 12px; margin: 16px 0; border: 1px solid var(--line); border-radius: 6px; text-align: center; font-size: 18px; }
+        .login-box button { width: 100%; padding: 12px; background: var(--ink); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
 
-  .list-panel{
-    background:var(--paper-raised); border:1px solid var(--line); border-radius:6px;
-    max-height:620px; overflow-y:auto;
-  }
-  .list-empty{padding:28px 20px; color:var(--ink-mute); font-size:14px; text-align:center;}
-  .booking-row{
-    padding:14px 18px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .12s;
-  }
-  .booking-row:hover{background:#F6F5F1;}
-  .booking-row:last-child{border-bottom:none;}
-  .booking-row .name{font-weight:700; font-size:14.5px;}
-  .booking-row .meta{font-size:12.5px; color:var(--ink-mute); margin-top:4px; line-height:1.6;}
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        h1 { margin: 0; font-size: 24px; font-weight: 800; }
+        .badge { background: var(--teal); color: white; padding: 6px 12px; border-radius: 6px; font-size: 14px; }
 
-  .refresh-btn{
-    background:var(--teal); color:#fff; border:none; padding:9px 16px; border-radius:5px;
-    font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;
-  }
-  .refresh-btn:hover{background:#155457;}
+        /* الجدول */
+        .card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 24px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: right; }
+        th, td { padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 14px; }
+        th { background: #F8FAFC; font-weight: 700; color: var(--ink-mute); }
+        tr:hover { background: #F8FAFC; }
+        
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; }
+        .status-pending { background: #FEF3C7; color: #D97706; }
 
-  @media (max-width:900px){
-    .layout{grid-template-columns:1fr;}
-    #adminMap{height:400px;}
-  }
-</style>
+        #map { height: 350px; width: 100%; border-radius: 8px; border: 1px solid var(--line); }
+    </style>
 </head>
 <body>
 
-<div class="lock-screen" id="lockScreen">
-  <h2>لوحة المشرف</h2>
-  <p>الصفحة دي لصاحب المشروع بس. اكتب كلمة المرور للدخول.</p>
-  <input type="password" id="pwInput" placeholder="كلمة المرور">
-  <button onclick="checkPassword()">دخول</button>
-  <div class="err" id="pwErr"></div>
-</div>
-
-<div class="wrap" id="dashboard">
-  <header>
-    <div class="logo"><span class="dot"></span>The Way — لوحة المشرف</div>
-    <div style="display:flex; align-items:center; gap:12px;">
-      <span class="badge">عدد الحجوزات: <strong id="countBadge">0</strong></span>
-      <a id="fullRouteBtn" class="refresh-btn" style="text-decoration:none; background:var(--ink);" href="#" target="_blank" rel="noopener">فتح خط السير في خرائط جوجل</a>
-      <button class="refresh-btn" onclick="loadBookings()">تحديث</button>
-    </div>
-  </header>
-
-  <div class="layout">
-    <div id="adminMap"></div>
-    <div class="list-panel" id="listPanel">
-      <div class="list-empty">جاري التحميل…</div>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script>
-  const ADMIN_PASSWORD = '1234';
-  const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzcDHtSrKvjBd3Jn37af1NdX8jtiayJVLNoy13FQBIoyjkGAVs_Swk57FwMgkZd6o46Qw/exec';
-
-  function checkPassword(){
-    const val = document.getElementById('pwInput').value;
-    if (val === ADMIN_PASSWORD){
-      document.getElementById('lockScreen').style.display = 'none';
-      document.getElementById('dashboard').classList.add('show');
-      initMap();
-      loadBookings();
-      setupFullRouteButton();
-    } else {
-      document.getElementById('pwErr').textContent = 'كلمة المرور غلط.';
-    }
-  }
-  document.getElementById('pwInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') checkPassword();
-  });
-
-  function googleMapsLink(lat, lng){
-    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-  }
-
-  function setupFullRouteButton(){
-    const origin = STOPS[0];
-    const waypoints = STOPS.slice(1).map(s => `${s.lat},${s.lng}`).join('|');
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${DESTINATION.lat},${DESTINATION.lng}&waypoints=${waypoints}&travelmode=driving`;
-    document.getElementById('fullRouteBtn').href = url;
-  }
-
-  const STOPS = [
-    { name: "ميدان النافورة", lat: 30.0153693, lng: 31.2808228 },
-    { name: "سلم البارون", lat: 29.9825411, lng: 31.3386428 },
-    { name: "محطة وقود شل – النخيل", lat: 29.9849727, lng: 31.3568094 }
-  ];
-  const DESTINATION = { name: "جامعة النيل", lat: 30.0121847, lng: 30.9868612 };
-  let map, markersLayer;
-
-  function initMap(){
-    map = L.map('adminMap').setView([29.999, 31.15], 11);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ'
-    }).addTo(map);
-
-    STOPS.forEach(stop => {
-      L.marker([stop.lat, stop.lng], {
-        icon: L.divIcon({ className:'', html:'<div style="width:14px;height:14px;border-radius:50%;background:#F2A900;border:2px solid #0B1020;"></div>', iconSize:[14,14] })
-      }).addTo(map).bindTooltip(stop.name, { permanent:true, direction:'top', offset:[0,-6] });
-    });
-
-    L.marker([DESTINATION.lat, DESTINATION.lng], {
-      icon: L.divIcon({ className:'', html:'<div style="width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px #F2A900;"></div>', iconSize:[16,16] })
-    }).addTo(map).bindTooltip('جامعة النيل (الوجهة)', { permanent:true, direction:'top', offset:[0,-6] });
-
-    markersLayer = L.layerGroup().addTo(map);
-    map.fitBounds([...STOPS, DESTINATION].map(p => [p.lat, p.lng]), { padding:[40,40] });
-
-    const allPoints = [...STOPS, DESTINATION];
-    const coordsParam = allPoints.map(p => `${p.lng},${p.lat}`).join(';');
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson`;
-    fetch(osrmUrl)
-      .then(r => r.json())
-      .then(data => {
-        if (data.routes && data.routes[0]) {
-          const latlngs = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-          L.polyline(latlngs, { color:'#1B6E71', weight:4, opacity:0.9 }).addTo(map);
-        }
-      })
-      .catch(() => { });
-  }
-
-  function loadBookings(){
-    if (!GOOGLE_SHEET_URL){
-      document.getElementById('listPanel').innerHTML = '<div class="list-empty">لسه محدّدتش رابط GOOGLE_SHEET_URL في أعلى الكود.</div>';
-      return;
-    }
-    document.getElementById('listPanel').innerHTML = '<div class="list-empty">جاري التحميل…</div>';
-
-    const callbackName = 'onBookingsLoaded_' + Date.now();
-    const timeoutId = setTimeout(() => {
-      if (window[callbackName]){
-        document.getElementById('listPanel').innerHTML = '<div class="list-empty">حصل خطأ في تحميل البيانات. تأكد إن رابط الشيت شغال ومنشور بشكل صحيح.</div>';
-        delete window[callbackName];
-      }
-    }, 10000);
-
-    window[callbackName] = function(data){
-      clearTimeout(timeoutId);
-      renderBookings(data);
-      delete window[callbackName];
-      script.remove();
-    };
-
-    const script = document.createElement('script');
-    script.src = `${GOOGLE_SHEET_URL}?callback=${callbackName}`;
-    script.onerror = () => {
-      clearTimeout(timeoutId);
-      document.getElementById('listPanel').innerHTML = '<div class="list-empty">حصل خطأ في تحميل البيانات. تأكد إن رابط الشيت شغال ومنشور بشكل صحيح.</div>';
-      delete window[callbackName];
-    };
-    document.body.appendChild(script);
-  }
-
-  function renderBookings(data){
-    markersLayer.clearLayers();
-    const listPanel = document.getElementById('listPanel');
-    document.getElementById('countBadge').textContent = data.length;
-
-    if (!data.length){
-      listPanel.innerHTML = '<div class="list-empty">مفيش حجوزات لسه.</div>';
-      return;
-    }
-
-    listPanel.innerHTML = '';
-    const bounds = [];
-
-    data.slice().reverse().forEach((b) => {
-      const lat = parseFloat(b.lat), lng = parseFloat(b.lng);
-      const hasCoords = !isNaN(lat) && !isNaN(lng);
-
-      if (hasCoords){
-        const marker = L.marker([lat, lng], {
-          icon: L.divIcon({ className:'', html:'<div style="width:16px;height:16px;border-radius:50%;background:#12182B;border:2px solid #fff;box-shadow:0 0 0 2px #12182B;"></div>', iconSize:[16,16] })
-        });
-        marker.bindPopup(
-          `<div class="popup-name">${escapeHtml(b.name)}</div>
-           <div class="popup-row">الرقم الجامعي: ${escapeHtml(b.studentId)} · ${escapeHtml(b.tripType)}</div>
-           <div class="popup-row">الصعود: ${escapeHtml(b.pickup)}</div>
-           <div class="popup-row">الذهاب: ${escapeHtml(b.departure)} · العودة: ${escapeHtml(b.returnTime)}</div>
-           <a href="${googleMapsLink(lat, lng)}" target="_blank" rel="noopener" style="display:inline-block; margin-top:8px; font-size:12.5px; font-weight:700; color:#1B6E71;">فتح في خرائط جوجل ←</a>`
-        );
-        marker.addTo(markersLayer);
-        bounds.push([lat, lng]);
-      }
-
-      const row = document.createElement('div');
-      row.className = 'booking-row';
-      row.innerHTML = `
-        <div class="name">${escapeHtml(b.name)} <span style="font-weight:400; color:var(--ink-mute); font-size:12px;">· ${escapeHtml(b.studentId)}</span></div>
-        <div class="meta">
-          ${escapeHtml(b.tripType)} · ${escapeHtml(b.pickup)}<br>
-          الذهاب ${escapeHtml(b.departure)} · العودة ${escapeHtml(b.returnTime)}
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h3 style="margin-top:0;">لوحة المشرف</h3>
+            <p style="font-size:13px; color:#666;">الصفحة محميّة للمصرح لهم فقط</p>
+            <input type="password" id="passInput" placeholder="كلمة المرور">
+            <button onclick="checkPass()">دخول</button>
         </div>
-        ${hasCoords ? `<a href="${googleMapsLink(lat, lng)}" target="_blank" rel="noopener" style="display:inline-block; margin-top:8px; font-size:12.5px; font-weight:700; color:#1B6E71; text-decoration:none;" onclick="event.stopPropagation();">فتح في خرائط جوجل ←</a>` : ''}
-      `;
-      if (hasCoords){
-        row.addEventListener('click', () => map.setView([lat, lng], 15));
-      }
-      listPanel.appendChild(row);
-    });
+    </div>
 
-    if (bounds.length){
-      bounds.push([DESTINATION.lat, DESTINATION.lng]);
-      map.fitBounds(bounds, { padding:[30,30] });
-    }
-  }
+    <!-- لوحة التحكم -->
+    <div class="container" id="adminContent" style="display:none;">
+        <header>
+            <h1>لوحة إدارية — The Way</h1>
+            <span class="badge" id="bookingCount">الحجوزات النشطة: 0</span>
+        </header>
 
-  function escapeHtml(str){
-    return String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-</script>
+        <div class="card">
+            <h3>جدول الحجوزات المباشرة</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>اسم الطالب</th>
+                        <th>الهاتف</th>
+                        <th>الانطلاق</th>
+                        <th>الوجهة</th>
+                        <th>الموعد</th>
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody id="bookingsTable">
+                    <tr><td colspan="7" style="text-align:center;">جاري تحميل البيانات من قاعدة البيانات...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h3>خريطة المسارات ومحطات التجمع</h3>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <script>
+        // 🔴 نفس بيانات الاتصال بـ Supabase
+        const SUPABASE_URL = "https://cogyqvqpcddamugirkqd.supabase.co";
+        // 🔴 ضع هنا نفس مفتاح (anon key) الذي وضعته في صفحة العميل:
+        const SUPABASE_KEY = "ضع_المفتاح_الخاص_بك_هنا";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // حماية اللوحة بكلمة السر 1234
+        function checkPass() {
+            const pass = document.getElementById('passInput').value;
+            if (pass === '1234') {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('adminContent').style.display = 'block';
+                initAdmin();
+            } else {
+                alert('كلمة المرور غير صحيحة!');
+            }
+        }
+
+        function initAdmin() {
+            // إعداد الخريطة
+            const map = L.map('map').setView([30.0131, 31.0003], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            // جلب البيانات أول مرة
+            fetchBookings();
+
+            // الاستماع التلقائي المباشر (Real-time) لأي حجز جديد ينزل في قاعدة البيانات
+            supabaseClient
+              .channel('public:bookings')
+              .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, payload => {
+                  fetchBookings(); // تحديث الجدول فوراً بمجرد دخول حجز جديد
+              })
+              .subscribe();
+        }
+
+        // جلب قائمة الحجوزات من Supabase
+        async function fetchBookings() {
+            const { data: bookings, error } = await supabaseClient
+                .from('bookings')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('خطأ في جلب البيانات:', error);
+                return;
+            }
+
+            const tbody = document.getElementById('bookingsTable');
+            document.getElementById('bookingCount').textContent = `الحجوزات النشطة: ${bookings.length}`;
+
+            if (bookings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد حجوزات حالية.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            bookings.forEach((b, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><b>${b.name || '-'}</b></td>
+                        <td>${b.phone || '-'}</td>
+                        <td>${b.pickup || '-'}</td>
+                        <td>${b.dropoff || '-'}</td>
+                        <td>${b.time || '-'}</td>
+                        <td><span class="status-badge status-pending">قيد الانتظار</span></td>
+                    </tr>
+                `;
+            });
+        }
+    </script>
 </body>
 </html>
