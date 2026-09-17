@@ -127,7 +127,7 @@
 <div class="lock-screen" id="lockScreen">
   <h2>لوحة المشرف</h2>
   <p>الصفحة دي لصاحب المشروع بس. اكتب كلمة المرور للدخول.</p>
-  <input type="password" id="pwInput" placeholder="كلمة المرور">
+  <input type="password" id="pwInput" placeholder="كلمة المرور اليومية">
   <button onclick="checkPassword()">دخول</button>
   <div class="err" id="pwErr"></div>
 </div>
@@ -163,16 +163,38 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-  const ADMIN_PASSWORD = '1234';
-  
   // إعدادات اتصال Supabase
   const SUPABASE_URL = "https://cogyqvqpcddamugirkqd.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvZ3lxdnFwY2RkYW11Z2lya3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQ4MzcsImV4cCI6MjEwNTA0MDgzN30.-6vsGlDVPjj1_kUy2IaO5HKrqrcbg7QSFnLKe8jZVjk";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  function checkPassword(){
-    const val = document.getElementById('pwInput').value;
-    if (val === ADMIN_PASSWORD){
+  async function checkPassword(){
+    const val = document.getElementById('pwInput').value.trim();
+    const errDiv = document.getElementById('pwErr');
+
+    if (!val) {
+      errDiv.textContent = 'يرجى كتابة كلمة المرور.';
+      return;
+    }
+
+    errDiv.textContent = 'جاري التحقق…';
+
+    // التاريخ المحلي للتأكد من المزامنة الصحيحة مع يوم التوليد
+    const today = new Date().toLocaleDateString('en-CA'); 
+
+    const { data, error } = await supabaseClient
+      .from('daily_passwords')
+      .select('password')
+      .eq('date', today)
+      .maybeSingle();
+
+    if (error || !data) {
+      errDiv.textContent = 'لم يتم إنشاء كلمة سر لليوم بعد.';
+      return;
+    }
+
+    if (val === data.password){
+      errDiv.textContent = '';
       document.getElementById('lockScreen').style.display = 'none';
       document.getElementById('dashboard').classList.add('show');
       initMap();
@@ -187,9 +209,10 @@
         })
         .subscribe();
     } else {
-      document.getElementById('pwErr').textContent = 'كلمة المرور غلط.';
+      errDiv.textContent = 'كلمة المرور اليومية غير صحيحة.';
     }
   }
+
   document.getElementById('pwInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') checkPassword();
   });
