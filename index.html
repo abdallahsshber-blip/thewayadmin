@@ -89,12 +89,24 @@
   }
   .list-empty{padding:28px 20px; color:var(--ink-mute); font-size:14px; text-align:center;}
   .booking-row{
-    padding:14px 18px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .12s;
+    padding:14px 18px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .12s, opacity .2s;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
   }
   .booking-row:hover{background:#F6F5F1;}
   .booking-row:last-child{border-bottom:none;}
   .booking-row .name{font-weight:700; font-size:14.5px;}
   .booking-row .meta{font-size:12.5px; color:var(--ink-mute); margin-top:4px; line-height:1.6;}
+
+  .check-btn {
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: all .15s ease;
+  }
 
   .refresh-btn{
     background:var(--teal); color:#fff; border:none; padding:9px 16px; border-radius:5px;
@@ -158,6 +170,13 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvZ3lxdnFwY2RkYW11Z2lya3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQ4MzcsImV4cCI6MjEwNTA0MDgzN30.-6vsGlDVPjj1_kUy2IaO5HKrqrcbg7QSFnLKe8jZVjk";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  // ترتيب المحطات جغرافياً من بداية الخط للوجهة
+  const STOPS_ORDER = {
+    "ميدان النافورة": 1,
+    "سلم البارون": 2,
+    "محطة وقود شل – النخيل": 3
+  };
+
   function checkPassword(){
     const val = document.getElementById('pwInput').value;
     if (val === ADMIN_PASSWORD){
@@ -167,10 +186,10 @@
       loadBookings();
       setupFullRouteButton();
       
-      // التحديث المباشر فور وصول أي حجز جديد
+      // التحديث المباشر فور وصول أو تعديل أي حجز
       supabaseClient
         .channel('public:bookings')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, payload => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, payload => {
             loadBookings();
         })
         .subscribe();
@@ -200,7 +219,6 @@
         async (position) => {
           const { latitude: lat, longitude: lng } = position.coords;
 
-          // إرسال أو تحديث الموقع في Supabase
           const { error } = await supabaseClient
             .from('driver_locations')
             .upsert(
@@ -229,6 +247,22 @@
       btn.innerText = '🚀 بدء مشاركة الموقع اللحظي';
       btn.style.background = '#28a745';
       statusText.innerText = 'تم إيقاف التتبع';
+    }
+  }
+
+  // دالة تحديث حالة ركوب العميل في Supabase
+  async function toggleCheckIn(bookingId, currentStatus) {
+    const newStatus = !currentStatus;
+    
+    const { error } = await supabaseClient
+      .from('bookings')
+      .update({ checked_in: newStatus })
+      .eq('id', bookingId);
+
+    if (error) {
+      alert('حدث خطأ أثناء تحديث حالة الركوب: ' + error.message);
+    } else {
+      loadBookings();
     }
   }
 
@@ -290,8 +324,7 @@
 
     const { data, error } = await supabaseClient
       .from('bookings')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*');
 
     if (error) {
       console.error('خطأ في جلب الحجوزات:', error);
@@ -312,19 +345,32 @@
       return;
     }
 
+    // فرز الحجوزات جغرافياً حسب ترتيب المحطة على الخط
+    data.sort((a, b) => {
+      const orderA = STOPS_ORDER[a.pickup] || 99;
+      const orderB = STOPS_ORDER[b.pickup] || 99;
+      return orderA - orderB;
+    });
+
     listPanel.innerHTML = '';
     const bounds = [];
 
     data.forEach((b) => {
       const lat = parseFloat(b.lat), lng = parseFloat(b.lng);
       const hasCoords = !isNaN(lat) && !isNaN(lng);
+      const isChecked = b.checked_in || false;
 
       if (hasCoords){
+        const markerColor = isChecked ? '#28a745' : '#12182B';
         const marker = L.marker([lat, lng], {
-          icon: L.divIcon({ className:'', html:'<div style="width:16px;height:16px;border-radius:50%;background:#12182B;border:2px solid #fff;box-shadow:0 0 0 2px #12182B;"></div>', iconSize:[16,16] })
+          icon: L.divIcon({ 
+            className:'', 
+            html:`<div style="width:16px;height:16px;border-radius:50%;background:${markerColor};border:2px solid #fff;box-shadow:0 0 0 2px ${markerColor};"></div>`, 
+            iconSize:[16,16] 
+          })
         });
         marker.bindPopup(
-          `<div class="popup-name">${escapeHtml(b.name)}</div>
+          `<div class="popup-name">${escapeHtml(b.name)} ${isChecked ? '✅ (ركب)' : ''}</div>
            <div class="popup-row">الهاتف: ${escapeHtml(b.phone)}</div>
            <div class="popup-row">الصعود: ${escapeHtml(b.pickup)}</div>
            <div class="popup-row">الوجهة: ${escapeHtml(b.dropoff)} · الموعد: ${escapeHtml(b.time)}</div>
@@ -336,14 +382,26 @@
 
       const row = document.createElement('div');
       row.className = 'booking-row';
+      if (isChecked) row.style.opacity = '0.55';
+
       row.innerHTML = `
-        <div class="name">${escapeHtml(b.name)} <span style="font-weight:400; color:var(--ink-mute); font-size:12px;">· ${escapeHtml(b.phone)}</span></div>
-        <div class="meta">
-          الصعود: ${escapeHtml(b.pickup)} ← ${escapeHtml(b.dropoff)}<br>
-          الموعد: ${escapeHtml(b.time)}
+        <div>
+          <div class="name">${escapeHtml(b.name)} <span style="font-weight:400; color:var(--ink-mute); font-size:12px;">· ${escapeHtml(b.phone)}</span></div>
+          <div class="meta">
+            📍 <strong>${escapeHtml(b.pickup)}</strong> ← ${escapeHtml(b.dropoff)}<br>
+            ⏰ الموعد: ${escapeHtml(b.time)}
+          </div>
+          ${hasCoords ? `<a href="${googleMapsLink(lat, lng)}" target="_blank" rel="noopener" style="display:inline-block; margin-top:6px; font-size:12px; font-weight:700; color:#1B6E71; text-decoration:none;" onclick="event.stopPropagation();">فتح في خرائط جوجل ←</a>` : ''}
         </div>
-        ${hasCoords ? `<a href="${googleMapsLink(lat, lng)}" target="_blank" rel="noopener" style="display:inline-block; margin-top:8px; font-size:12.5px; font-weight:700; color:#1B6E71; text-decoration:none;" onclick="event.stopPropagation();">فتح في خرائط جوجل ←</a>` : ''}
+        <div>
+          <button class="check-btn" 
+                  onclick="event.stopPropagation(); toggleCheckIn(${b.id}, ${isChecked})" 
+                  style="border: 1px solid ${isChecked ? '#28a745' : '#ccc'}; background: ${isChecked ? '#28a745' : '#fff'}; color: ${isChecked ? '#fff' : '#333'};">
+            ${isChecked ? '✅ ركب' : '◯ تم الركوب'}
+          </button>
+        </div>
       `;
+
       if (hasCoords){
         row.addEventListener('click', () => map.setView([lat, lng], 15));
       }
