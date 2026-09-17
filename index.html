@@ -170,13 +170,6 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvZ3lxdnFwY2RkYW11Z2lya3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQ4MzcsImV4cCI6MjEwNTA0MDgzN30.-6vsGlDVPjj1_kUy2IaO5HKrqrcbg7QSFnLKe8jZVjk";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // ترتيب المحطات جغرافياً من بداية الخط للوجهة
-  const STOPS_ORDER = {
-    "ميدان النافورة": 1,
-    "سلم البارون": 2,
-    "محطة وقود شل – النخيل": 3
-  };
-
   function checkPassword(){
     const val = document.getElementById('pwInput').value;
     if (val === ADMIN_PASSWORD){
@@ -279,11 +272,11 @@
 
   const STOPS = [
     { name: "ميدان النافورة", lat: 30.0153693, lng: 31.2808228 },
-    { name: "سلم البارون", lat: 29.9825411, lng: 31.3386428 },
-    { name: "محطة وقود شل – النخيل", lat: 29.9849727, lng: 31.3568094 }
+    { name: "محطة وقود شل – النخيل", lat: 29.9849727, lng: 31.3568094 },
+    { name: "سلم البارون", lat: 29.9825411, lng: 31.3386428 }
   ];
   const DESTINATION = { name: "جامعة النيل", lat: 30.0121847, lng: 30.9868612 };
-  let map, markersLayer;
+  let map, markersLayer, routeLatLngs = [];
 
   function initMap(){
     map = L.map('adminMap').setView([29.999, 31.15], 11);
@@ -312,11 +305,31 @@
       .then(r => r.json())
       .then(data => {
         if (data.routes && data.routes[0]) {
-          const latlngs = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-          L.polyline(latlngs, { color:'#1B6E71', weight:4, opacity:0.9 }).addTo(map);
+          routeLatLngs = data.routes[0].geometry.coordinates.map(c => L.latLng(c[1], c[0]));
+          L.polyline(routeLatLngs, { color:'#1B6E71', weight:4, opacity:0.9 }).addTo(map);
+          loadBookings(); // إعادة فرز الحجوزات فور اكتمال تحضير المسار
         }
       })
       .catch(() => { });
+  }
+
+  // دالة حساب ترتيب موقع الحجز على طول مسار خط السير الفعلي
+  function getDistanceAlongRoute(lat, lng) {
+    if (isNaN(lat) || isNaN(lng) || !routeLatLngs || routeLatLngs.length === 0) {
+      return 999999;
+    }
+    const point = L.latLng(lat, lng);
+    let minDistance = Infinity;
+    let closestIndex = 0;
+
+    for (let i = 0; i < routeLatLngs.length; i++) {
+      const dist = point.distanceTo(routeLatLngs[i]);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestIndex = i;
+      }
+    }
+    return closestIndex;
   }
 
   async function loadBookings(){
@@ -345,11 +358,11 @@
       return;
     }
 
-    // فرز الحجوزات جغرافياً حسب ترتيب المحطة على الخط
+    // ترتيب جميع العملاء (محطات وأماكن مخصصة) حسب التسلسل الجغرافي على خط السير
     data.sort((a, b) => {
-      const orderA = STOPS_ORDER[a.pickup] || 99;
-      const orderB = STOPS_ORDER[b.pickup] || 99;
-      return orderA - orderB;
+      const posA = getDistanceAlongRoute(parseFloat(a.lat), parseFloat(a.lng));
+      const posB = getDistanceAlongRoute(parseFloat(b.lat), parseFloat(b.lng));
+      return posA - posB;
     });
 
     listPanel.innerHTML = '';
@@ -382,7 +395,12 @@
 
       const row = document.createElement('div');
       row.className = 'booking-row';
-      if (isChecked) row.style.opacity = '0.55';
+      
+      // تمييز الكارت باللون الأخضر كاملاً وشريط جانبي فور الركوب
+      if (isChecked) {
+        row.style.backgroundColor = '#e8f5e9';
+        row.style.borderRight = '5px solid #28a745';
+      }
 
       row.innerHTML = `
         <div>
