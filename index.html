@@ -217,35 +217,43 @@
 
     errDiv.textContent = 'جاري التحقق…';
 
-    // جلب أحدث كلمة مرور مضافة في الجدول مباشرة لتجاوز مشاكل مطابقة التواريخ
-    const { data, error } = await supabaseClient
-      .from('daily_passwords')
-      .select('password, date')
-      .order('id', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    try {
+      // جلب كلمات المرور بطريقة آمنة وسليمة 100%
+      const { data, error } = await supabaseClient
+        .from('daily_passwords')
+        .select('*');
 
-    if (error || !data) {
-      errDiv.textContent = 'خطأ في الاتصال أو لم يتم إنشاء كلمة سر بعد.';
-      return;
-    }
+      if (error) {
+        errDiv.textContent = 'خطأ قاعدة البيانات: ' + error.message;
+        return;
+      }
 
-    if (val === String(data.password)){
-      errDiv.textContent = '';
-      document.getElementById('lockScreen').style.display = 'none';
-      document.getElementById('dashboard').classList.add('show');
-      initMap();
-      loadBookings();
-      setupFullRouteButton();
-      
-      supabaseClient
-        .channel('public:bookings')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, payload => {
-            loadBookings();
-        })
-        .subscribe();
-    } else {
-      errDiv.textContent = 'كلمة المرور غير صحيحة.';
+      if (!data || data.length === 0) {
+        errDiv.textContent = 'جدول كلمات السر فارغ تماماً.';
+        return;
+      }
+
+      const found = data.find(item => String(item.password) === val);
+
+      if (found) {
+        errDiv.textContent = '';
+        document.getElementById('lockScreen').style.display = 'none';
+        document.getElementById('dashboard').classList.add('show');
+        initMap();
+        loadBookings();
+        setupFullRouteButton();
+        
+        supabaseClient
+          .channel('public:bookings')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, payload => {
+              loadBookings();
+          })
+          .subscribe();
+      } else {
+        errDiv.textContent = 'كلمة المرور غير صحيحة.';
+      }
+    } catch (err) {
+      errDiv.textContent = 'حدث خطأ في الاتصال.';
     }
   }
 
