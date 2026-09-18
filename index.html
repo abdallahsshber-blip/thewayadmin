@@ -85,8 +85,42 @@
 
   .list-panel{
     background:var(--paper-raised); border:1px solid var(--line); border-radius:6px;
-    max-height:620px; overflow-y:auto;
+    max-height:620px; overflow-y:auto; display:flex; flex-direction:column;
   }
+
+  /* أزرار التبويب لتصفية الحجوزات */
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--line);
+    background: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 12px 10px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--ink-mute);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all .15s ease;
+  }
+  .tab-btn.active {
+    color: var(--teal);
+    border-bottom-color: var(--teal);
+    background: var(--paper-raised);
+  }
+
+  .booking-list-container {
+    overflow-y: auto;
+    flex: 1;
+  }
+
   .list-empty{padding:28px 20px; color:var(--ink-mute); font-size:14px; text-align:center;}
   .booking-row{
     padding:14px 18px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .12s, opacity .2s;
@@ -155,8 +189,15 @@
 
   <div class="layout">
     <div id="adminMap"></div>
-    <div class="list-panel" id="listPanel">
-      <div class="list-empty">جاري التحميل…</div>
+    <div class="list-panel">
+      <!-- أزرار التبويب لتصفية القائمة -->
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tabActiveBtn" onclick="switchTab('active')">الرحلة الحالية</button>
+        <button class="tab-btn" id="tabCompletedBtn" onclick="switchTab('completed')">الأرشيف والمنتهية</button>
+      </div>
+      <div class="booking-list-container" id="listPanel">
+        <div class="list-empty">جاري التحميل…</div>
+      </div>
     </div>
   </div>
 </div>
@@ -167,6 +208,8 @@
   const SUPABASE_URL = "https://cogyqvqpcddamugirkqd.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvZ3lxdnFwY2RkYW11Z2lya3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQ4MzcsImV4cCI6MjEwNTA0MDgzN30.-6vsGlDVPjj1_kUy2IaO5HKrqrcbg7QSFnLKe8jZVjk";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentTab = 'active'; // الحالة الافتراضية: الرحلات الحالية فقط
 
   async function checkPassword(){
     const val = document.getElementById('pwInput').value.trim();
@@ -179,7 +222,6 @@
 
     errDiv.textContent = 'جاري التحقق…';
 
-    // التاريخ المحلي للتأكد من المزامنة الصحيحة مع يوم التوليد
     const today = new Date().toLocaleDateString('en-CA'); 
 
     const { data, error } = await supabaseClient
@@ -201,7 +243,6 @@
       loadBookings();
       setupFullRouteButton();
       
-      // التحديث المباشر فور وصول أو تعديل أي حجز
       supabaseClient
         .channel('public:bookings')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, payload => {
@@ -266,17 +307,25 @@
     }
   }
 
-  // دالة تحديث حالة ركوب العميل في Supabase
-  async function toggleCheckIn(bookingId, currentStatus) {
-    const newStatus = !currentStatus;
+  // التبديل بين التبويبات (الرحلة الحالية / الأرشيف)
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tabActiveBtn').classList.toggle('active', tab === 'active');
+    document.getElementById('tabCompletedBtn').classList.toggle('active', tab === 'completed');
+    loadBookings();
+  }
+
+  // تغيير حالة الرحلة (من نشطة إلى منتهية أو العكس)
+  async function toggleTripCompletion(bookingId, isCurrentlyCompleted) {
+    const newStatus = isCurrentlyCompleted ? 'active' : 'completed';
     
     const { error } = await supabaseClient
       .from('bookings')
-      .update({ checked_in: newStatus })
+      .update({ status: newStatus })
       .eq('id', bookingId);
 
     if (error) {
-      alert('حدث خطأ أثناء تحديث حالة الركوب: ' + error.message);
+      alert('حدث خطأ أثناء تحديث حالة الرحلة: ' + error.message);
     } else {
       loadBookings();
     }
@@ -330,13 +379,12 @@
         if (data.routes && data.routes[0]) {
           routeLatLngs = data.routes[0].geometry.coordinates.map(c => L.latLng(c[1], c[0]));
           L.polyline(routeLatLngs, { color:'#1B6E71', weight:4, opacity:0.9 }).addTo(map);
-          loadBookings(); // إعادة فرز الحجوزات فور اكتمال تحضير المسار
+          loadBookings();
         }
       })
       .catch(() => { });
   }
 
-  // دالة حساب ترتيب موقع الحجز على طول مسار خط السير الفعلي
   function getDistanceAlongRoute(lat, lng) {
     if (isNaN(lat) || isNaN(lng) || !routeLatLngs || routeLatLngs.length === 0) {
       return 999999;
@@ -358,9 +406,17 @@
   async function loadBookings(){
     document.getElementById('listPanel').innerHTML = '<div class="list-empty">جاري التحميل…</div>';
 
-    const { data, error } = await supabaseClient
-      .from('bookings')
-      .select('*');
+    // جلب الحجوزات المفلترة بحسب الحالة المحددة (active أو completed)
+    let query = supabaseClient.from('bookings').select('*');
+    
+    if (currentTab === 'completed') {
+      query = query.eq('status', 'completed');
+    } else {
+      // إظهار الحجوزات النشطة (سواء status = active أو التي لا تحتوى على status بعد)
+      query = query.or('status.eq.active,status.is.null');
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('خطأ في جلب الحجوزات:', error);
@@ -377,11 +433,10 @@
     document.getElementById('countBadge').textContent = data.length;
 
     if (!data.length){
-      listPanel.innerHTML = '<div class="list-empty">مفيش حجوزات لسه.</div>';
+      listPanel.innerHTML = `<div class="list-empty">${currentTab === 'completed' ? 'لا توجد رحلات منتهية بالأرشيف.' : 'لا توجد حجوزات حقيقية حالياً.'}</div>`;
       return;
     }
 
-    // ترتيب جميع العملاء (محطات وأماكن مخصصة) حسب التسلسل الجغرافي على خط السير
     data.sort((a, b) => {
       const posA = getDistanceAlongRoute(parseFloat(a.lat), parseFloat(a.lng));
       const posB = getDistanceAlongRoute(parseFloat(b.lat), parseFloat(b.lng));
@@ -394,19 +449,19 @@
     data.forEach((b) => {
       const lat = parseFloat(b.lat), lng = parseFloat(b.lng);
       const hasCoords = !isNaN(lat) && !isNaN(lng);
-      const isChecked = b.checked_in || false;
+      const isCompleted = b.status === 'completed';
 
-      if (hasCoords){
-        const markerColor = isChecked ? '#28a745' : '#12182B';
+      // عرض العلامات على الخريطة فقط للرحلات الحالية
+      if (hasCoords && !isCompleted){
         const marker = L.marker([lat, lng], {
           icon: L.divIcon({ 
             className:'', 
-            html:`<div style="width:16px;height:16px;border-radius:50%;background:${markerColor};border:2px solid #fff;box-shadow:0 0 0 2px ${markerColor};"></div>`, 
+            html:`<div style="width:16px;height:16px;border-radius:50%;background:#12182B;border:2px solid #fff;box-shadow:0 0 0 2px #12182B;"></div>`, 
             iconSize:[16,16] 
           })
         });
         marker.bindPopup(
-          `<div class="popup-name">${escapeHtml(b.name)} ${isChecked ? '✅ (ركب)' : ''}</div>
+          `<div class="popup-name">${escapeHtml(b.name)}</div>
            <div class="popup-row">الهاتف: ${escapeHtml(b.phone)}</div>
            <div class="popup-row">الصعود: ${escapeHtml(b.pickup)}</div>
            <div class="popup-row">الوجهة: ${escapeHtml(b.dropoff)} · الموعد: ${escapeHtml(b.time)}</div>
@@ -418,12 +473,6 @@
 
       const row = document.createElement('div');
       row.className = 'booking-row';
-      
-      // تمييز الكارت باللون الأخضر كاملاً وشريط جانبي فور الركوب
-      if (isChecked) {
-        row.style.backgroundColor = '#e8f5e9';
-        row.style.borderRight = '5px solid #28a745';
-      }
 
       row.innerHTML = `
         <div>
@@ -436,9 +485,9 @@
         </div>
         <div>
           <button class="check-btn" 
-                  onclick="event.stopPropagation(); toggleCheckIn(${b.id}, ${isChecked})" 
-                  style="border: 1px solid ${isChecked ? '#28a745' : '#ccc'}; background: ${isChecked ? '#28a745' : '#fff'}; color: ${isChecked ? '#fff' : '#333'};">
-            ${isChecked ? '✅ ركب' : '◯ تم الركوب'}
+                  onclick="event.stopPropagation(); toggleTripCompletion(${b.id}, ${isCompleted})" 
+                  style="border: 1px solid ${isCompleted ? '#6c757d' : '#28a745'}; background: ${isCompleted ? '#f8f9fa' : '#28a745'}; color: ${isCompleted ? '#333' : '#fff'};">
+            ${isCompleted ? 'إعادة للنشطة ↺' : '✅ إنهاء الرحلة'}
           </button>
         </div>
       `;
@@ -449,7 +498,7 @@
       listPanel.appendChild(row);
     });
 
-    if (bounds.length){
+    if (bounds.length && currentTab === 'active'){
       bounds.push([DESTINATION.lat, DESTINATION.lng]);
       map.fitBounds(bounds, { padding:[30,30] });
     }
