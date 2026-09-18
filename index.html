@@ -209,7 +209,7 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvZ3lxdnFwY2RkYW11Z2lya3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQ4MzcsImV4cCI6MjEwNTA0MDgzN30.-6vsGlDVPjj1_kUy2IaO5HKrqrcbg7QSFnLKe8jZVjk";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  let currentTab = 'active'; // الحالة الافتراضية: الرحلات الحالية فقط
+  let currentTab = 'active';
 
   async function checkPassword(){
     const val = document.getElementById('pwInput').value.trim();
@@ -307,7 +307,6 @@
     }
   }
 
-  // التبديل بين التبويبات (الرحلة الحالية / الأرشيف)
   function switchTab(tab) {
     currentTab = tab;
     document.getElementById('tabActiveBtn').classList.toggle('active', tab === 'active');
@@ -315,7 +314,6 @@
     loadBookings();
   }
 
-  // تغيير حالة الرحلة (من نشطة إلى منتهية أو العكس)
   async function toggleTripCompletion(bookingId, isCurrentlyCompleted) {
     const newStatus = isCurrentlyCompleted ? 'active' : 'completed';
     
@@ -406,7 +404,6 @@
   async function loadBookings(){
     document.getElementById('listPanel').innerHTML = '<div class="list-empty">جاري التحميل…</div>';
 
-    // جلب كل البيانات من جدول الحجوزات لتجنب مشاكل الفلترة بالـ SQL مع القيم الفارغة (null)
     const { data, error } = await supabaseClient
       .from('bookings')
       .select('*');
@@ -417,7 +414,6 @@
       return;
     }
 
-    // تصفية الحجوزات جافاسكريبت بحسب التبويب المفتوح
     const filteredData = (data || []).filter(b => {
       if (currentTab === 'completed') {
         return b.status === 'completed';
@@ -439,6 +435,7 @@
       return;
     }
 
+    // ترتيب أمني حقيقي لمنع تجمد الواجهة في حال غياب Lat/Lng
     data.sort((a, b) => {
       const posA = getDistanceAlongRoute(parseFloat(a.lat), parseFloat(a.lng));
       const posB = getDistanceAlongRoute(parseFloat(b.lat), parseFloat(b.lng));
@@ -453,7 +450,6 @@
       const hasCoords = !isNaN(lat) && !isNaN(lng);
       const isCompleted = b.status === 'completed';
 
-      // عرض العلامات على الخريطة فقط للرحلات الحالية
       if (hasCoords && !isCompleted){
         const marker = L.marker([lat, lng], {
           icon: L.divIcon({ 
