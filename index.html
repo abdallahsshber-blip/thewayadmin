@@ -217,22 +217,20 @@
 
     errDiv.textContent = 'جاري التحقق…';
 
-    // تم تعديل طريقة جلب التاريخ لتتوافق تماماً مع صيغة قاعدة البيانات محلياً
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
+    // جلب أحدث كلمة مرور مضافة في الجدول مباشرة لتجاوز مشاكل مطابقة التواريخ
     const { data, error } = await supabaseClient
       .from('daily_passwords')
-      .select('password')
-      .eq('date', today)
+      .select('password, date')
+      .order('id', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error || !data) {
-      errDiv.textContent = 'لم يتم إنشاء كلمة سر لليوم بعد.';
+      errDiv.textContent = 'خطأ في الاتصال أو لم يتم إنشاء كلمة سر بعد.';
       return;
     }
 
-    if (val === data.password){
+    if (val === String(data.password)){
       errDiv.textContent = '';
       document.getElementById('lockScreen').style.display = 'none';
       document.getElementById('dashboard').classList.add('show');
@@ -247,7 +245,7 @@
         })
         .subscribe();
     } else {
-      errDiv.textContent = 'كلمة المرور اليومية غير صحيحة.';
+      errDiv.textContent = 'كلمة المرور غير صحيحة.';
     }
   }
 
