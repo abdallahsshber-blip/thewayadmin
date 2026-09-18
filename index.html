@@ -88,32 +88,17 @@
     max-height:620px; overflow-y:auto; display:flex; flex-direction:column;
   }
 
-  /* أزرار التبويب لتصفية الحجوزات */
-  .tab-bar {
-    display: flex;
-    border-bottom: 1px solid var(--line);
+  /* شريط عنوان قائمة الحجوزات بدلاً من أزرار التبويب */
+  .panel-header {
+    padding: 14px 18px;
     background: #f8f9fa;
+    border-bottom: 1px solid var(--line);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
     position: sticky;
     top: 0;
     z-index: 10;
-  }
-  .tab-btn {
-    flex: 1;
-    padding: 12px 10px;
-    border: none;
-    background: transparent;
-    font-family: inherit;
-    font-size: 13.5px;
-    font-weight: 700;
-    color: var(--ink-mute);
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    transition: all .15s ease;
-  }
-  .tab-btn.active {
-    color: var(--teal);
-    border-bottom-color: var(--teal);
-    background: var(--paper-raised);
   }
 
   .booking-list-container {
@@ -170,7 +155,7 @@
   <header>
     <div class="logo"><span class="dot"></span>The Way — لوحة المشرف</div>
     <div style="display:flex; align-items:center; gap:12px;">
-      <span class="badge">عدد الحجوزات: <strong id="countBadge">0</strong></span>
+      <span class="badge">عدد الحجوزات النشطة: <strong id="countBadge">0</strong></span>
       <a id="fullRouteBtn" class="refresh-btn" style="text-decoration:none; background:var(--ink);" href="#" target="_blank" rel="noopener">فتح خط السير في خرائط جوجل</a>
       <button class="refresh-btn" onclick="loadBookings()">تحديث</button>
     </div>
@@ -190,10 +175,8 @@
   <div class="layout">
     <div id="adminMap"></div>
     <div class="list-panel">
-      <!-- أزرار التبويب لتصفية القائمة -->
-      <div class="tab-bar">
-        <button class="tab-btn active" id="tabActiveBtn" onclick="switchTab('active')">الرحلة الحالية</button>
-        <button class="tab-btn" id="tabCompletedBtn" onclick="switchTab('completed')">الأرشيف والمنتهية</button>
+      <div class="panel-header">
+        قائمة الحجوزات النشطة
       </div>
       <div class="booking-list-container" id="listPanel">
         <div class="list-empty">جاري التحميل…</div>
@@ -220,10 +203,8 @@
 
   // إعدادات اتصال Supabase
   const SUPABASE_URL = "https://cogyqvqpcddamugirkqd.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvZ3lxdnFwY2RkYW11Z2lya3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQ4MzcsImV4cCI6MjEwNTA0MDgzN30.-6vsGlDVPjj1_kUy2IaO5HKrqrcbg7QSFnLKe8jZVjk";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInRefiI6ImNvZ3lxdnFwY2RkYW11Z2lya3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQ4MzcsImV4cCI6MjEwNTA0MDgzN30.-6vsGlDVPjj1_kUy2IaO5HKrqrcbg7QSFnLKe8jZVjk";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-  let currentTab = 'active';
 
   async function checkPassword(){
     const val = document.getElementById('pwInput').value.trim();
@@ -321,19 +302,10 @@
     }
   }
 
-  function switchTab(tab) {
-    currentTab = tab;
-    document.getElementById('tabActiveBtn').classList.toggle('active', tab === 'active');
-    document.getElementById('tabCompletedBtn').classList.toggle('active', tab === 'completed');
-    loadBookings();
-  }
-
-  async function toggleTripCompletion(bookingId, isCurrentlyCompleted) {
-    const newStatus = isCurrentlyCompleted ? 'active' : 'completed';
-    
+  async function toggleTripCompletion(bookingId) {
     const { error } = await supabaseClient
       .from('bookings')
-      .update({ status: newStatus })
+      .update({ status: 'completed' })
       .eq('id', bookingId);
 
     if (error) {
@@ -418,9 +390,11 @@
   async function loadBookings(){
     document.getElementById('listPanel').innerHTML = '<div class="list-empty">جاري التحميل…</div>';
 
+    // جلب الرحلات التي لم تنتهِ فقط
     const { data, error } = await supabaseClient
       .from('bookings')
-      .select('*');
+      .select('*')
+      .neq('status', 'completed');
 
     if (error) {
       console.error('خطأ في جلب الحجوزات:', error);
@@ -428,15 +402,7 @@
       return;
     }
 
-    const filteredData = (data || []).filter(b => {
-      if (currentTab === 'completed') {
-        return b.status === 'completed';
-      } else {
-        return b.status !== 'completed';
-      }
-    });
-
-    renderBookings(filteredData);
+    renderBookings(data || []);
   }
 
   function renderBookings(data){
@@ -445,7 +411,7 @@
     document.getElementById('countBadge').textContent = data.length;
 
     if (!data.length){
-      listPanel.innerHTML = `<div class="list-empty">${currentTab === 'completed' ? 'لا توجد رحلات منتهية بالأرشيف.' : 'لا توجد حجوزات حقيقية حالياً.'}</div>`;
+      listPanel.innerHTML = `<div class="list-empty">لا توجد حجوزات نشطة حالياً.</div>`;
       return;
     }
 
@@ -462,9 +428,8 @@
     data.forEach((b) => {
       const lat = parseFloat(b.lat), lng = parseFloat(b.lng);
       const hasCoords = !isNaN(lat) && !isNaN(lng);
-      const isCompleted = b.status === 'completed';
 
-      if (hasCoords && !isCompleted){
+      if (hasCoords){
         const marker = L.marker([lat, lng], {
           icon: L.divIcon({ 
             className:'', 
@@ -497,9 +462,9 @@
         </div>
         <div>
           <button class="check-btn" 
-                  onclick="event.stopPropagation(); toggleTripCompletion(${b.id}, ${isCompleted})" 
-                  style="border: 1px solid ${isCompleted ? '#6c757d' : '#28a745'}; background: ${isCompleted ? '#f8f9fa' : '#28a745'}; color: ${isCompleted ? '#333' : '#fff'};">
-            ${isCompleted ? 'إعادة للنشطة ↺' : '✅ إنهاء الرحلة'}
+                  onclick="event.stopPropagation(); toggleTripCompletion(${b.id})" 
+                  style="border: 1px solid #28a745; background: #28a745; color: #fff;">
+            ✅ تم الاتقاء
           </button>
         </div>
       `;
@@ -510,7 +475,7 @@
       listPanel.appendChild(row);
     });
 
-    if (bounds.length && currentTab === 'active'){
+    if (bounds.length){
       bounds.push([DESTINATION.lat, DESTINATION.lng]);
       map.fitBounds(bounds, { padding:[30,30] });
     }
