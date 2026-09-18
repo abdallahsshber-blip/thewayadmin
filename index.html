@@ -406,17 +406,10 @@
   async function loadBookings(){
     document.getElementById('listPanel').innerHTML = '<div class="list-empty">جاري التحميل…</div>';
 
-    // جلب الحجوزات المفلترة بحسب الحالة المحددة (active أو completed)
-    let query = supabaseClient.from('bookings').select('*');
-    
-    if (currentTab === 'completed') {
-      query = query.eq('status', 'completed');
-    } else {
-      // إظهار الحجوزات النشطة (سواء status = active أو التي لا تحتوى على status بعد)
-      query = query.or('status.eq.active,status.is.null');
-    }
-
-    const { data, error } = await query;
+    // جلب كل البيانات من جدول الحجوزات لتجنب مشاكل الفلترة بالـ SQL مع القيم الفارغة (null)
+    const { data, error } = await supabaseClient
+      .from('bookings')
+      .select('*');
 
     if (error) {
       console.error('خطأ في جلب الحجوزات:', error);
@@ -424,7 +417,16 @@
       return;
     }
 
-    renderBookings(data || []);
+    // تصفية الحجوزات جافاسكريبت بحسب التبويب المفتوح
+    const filteredData = (data || []).filter(b => {
+      if (currentTab === 'completed') {
+        return b.status === 'completed';
+      } else {
+        return b.status !== 'completed';
+      }
+    });
+
+    renderBookings(filteredData);
   }
 
   function renderBookings(data){
