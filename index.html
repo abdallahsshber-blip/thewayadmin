@@ -218,7 +218,6 @@
     errDiv.textContent = 'جاري التحقق…';
 
     try {
-      // جلب كلمات المرور بطريقة آمنة وسليمة 100%
       const { data, error } = await supabaseClient
         .from('daily_passwords')
         .select('*');
@@ -253,7 +252,7 @@
         errDiv.textContent = 'كلمة المرور غير صحيحة.';
       }
     } catch (err) {
-      errDiv.textContent = 'حدث خطأ في الاتصال.';
+      errDiv.textContent = 'خطأ في الاتصال أو لم يتم إنشاء كلمة سر بعد.';
     }
   }
 
