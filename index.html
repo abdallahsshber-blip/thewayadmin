@@ -201,9 +201,9 @@
     }
   });
 
-  // إعدادات اتصال Supabase
+  // إعدادات اتصال Supabase بالمفتاح العام الصحيح (anon key)
   const SUPABASE_URL = "https://cogyqvqpcddamugirkqd.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInRefiI6ImNvZ3lxdnFwY2RkYW11Z2lya3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQ4MzcsImV4cCI6MjEwNTA0MDgzN30.-6vsGlDVPjj1_kUy2IaO5HKrqrcbg7QSFnLKe8jZVjk";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvZ3lxdnFwY2RkYW11Z2lya3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQ4MzcsImV4cCI6MjEwNTA0MDgzN30.-6vsGlDVPjj1_kUy2IaO5HKrqrcbg7QSFnLKe8jZVjk";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   async function checkPassword(){
