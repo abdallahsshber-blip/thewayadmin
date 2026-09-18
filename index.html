@@ -217,7 +217,9 @@
 
     errDiv.textContent = 'جاري التحقق…';
 
-    const today = new Date().toLocaleDateString('en-CA'); 
+    // تم تعديل طريقة جلب التاريخ لتتوافق تماماً مع صيغة قاعدة البيانات محلياً
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     const { data, error } = await supabaseClient
       .from('daily_passwords')
