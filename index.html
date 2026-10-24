@@ -136,6 +136,7 @@
       <span class="badge">الحجوزات النشطة <strong id="countBadge">0</strong></span>
       <a id="fullRouteBtn" class="refresh-btn ghost" href="#" target="_blank" rel="noopener">فتح خط السير في خرائط جوجل</a>
       <button class="refresh-btn" onclick="loadBookings()">تحديث</button>
+      <button class="refresh-btn ghost" onclick="adminLogout()">خروج</button>
     </div>
   </header>
 
@@ -184,8 +185,23 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvZ3lxdnFwY2RkYW11Z2lya3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQ4MzcsImV4cCI6MjEwNTA0MDgzN30.-6vsGlDVPjj1_kUy2IaO5HKrqrcbg7QSFnLKe8jZVjk";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  async function checkPassword(){
-    const val = document.getElementById('pwInput').value.trim();
+  const store = {
+    get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+    set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+    del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+  };
+  const SAVED_KEY = 'way_admin_pw';
+  let dashboardStarted = false;
+
+  function showLock(msg){
+    document.getElementById('lockScreen').style.display = '';
+    document.getElementById('pwErr').textContent = msg || '';
+  }
+
+  // saved: كلمة السر المحفوظة (دخول تلقائي)، وإلا بتتقرأ من خانة الإدخال
+  async function checkPassword(saved){
+    const isAuto = typeof saved === 'string';
+    const val = isAuto ? saved : document.getElementById('pwInput').value.trim();
     const errDiv = document.getElementById('pwErr');
 
     if (!val) {
@@ -193,7 +209,7 @@
       return;
     }
 
-    errDiv.textContent = 'جاري التحقق…';
+    if (!isAuto) errDiv.textContent = 'جاري التحقق…';
 
     try {
       const { data, error } = await supabaseClient
@@ -201,21 +217,24 @@
         .select('*');
 
       if (error) {
-        errDiv.textContent = 'خطأ قاعدة البيانات: ' + error.message;
+        showLock('خطأ قاعدة البيانات: ' + error.message);
         return;
       }
 
       if (!data || data.length === 0) {
-        errDiv.textContent = 'جدول كلمات السر فارغ تماماً.';
+        showLock('جدول كلمات السر فارغ تماماً.');
         return;
       }
 
       const found = data.find(item => String(item.password) === val);
 
       if (found) {
+        store.set(SAVED_KEY, val);
         errDiv.textContent = '';
         document.getElementById('lockScreen').style.display = 'none';
         document.getElementById('dashboard').classList.add('show');
+        if (dashboardStarted) return;
+        dashboardStarted = true;
         initMap();
         loadBookings();
         setupFullRouteButton();
@@ -227,11 +246,18 @@
           })
           .subscribe();
       } else {
-        errDiv.textContent = 'كلمة المرور غير صحيحة.';
+        // كلمة السر اليومية اتغيرت: امسح المحفوظة واطلب الجديدة
+        store.del(SAVED_KEY);
+        showLock(isAuto ? 'كلمة المرور اتغيرت، اكتب الكلمة الجديدة.' : 'كلمة المرور غير صحيحة.');
       }
     } catch (err) {
-      errDiv.textContent = 'خطأ في الاتصال أو لم يتم إنشاء كلمة سر بعد.';
+      showLock('خطأ في الاتصال أو لم يتم إنشاء كلمة سر بعد.');
     }
+  }
+
+  function adminLogout(){
+    store.del(SAVED_KEY);
+    window.location.reload();
   }
 
   document.getElementById('pwInput').addEventListener('keydown', (e) => {
@@ -476,6 +502,15 @@
   function escapeHtml(str){
     return String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
+
+  // دخول تلقائي لو كلمة السر اليومية محفوظة وما زالت صحيحة
+  (function(){
+    const saved = store.get(SAVED_KEY);
+    if (saved) {
+      document.getElementById('lockScreen').style.display = 'none';
+      checkPassword(saved);
+    }
+  })();
 </script>
 </body>
 </html>
