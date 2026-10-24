@@ -6,7 +6,7 @@
 <title>لوحة المشرف — The Way</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 
 <!-- مكتبة Supabase -->
@@ -14,136 +14,110 @@
 
 <style>
   :root{
-    --ink:#12182B; --ink-mute:#4B5566;
-    --paper:#EDF0EE; --paper-raised:#FFFFFF;
-    --amber:#F2A900; --teal:#1B6E71; --line:#D3D9D5;
+    --bg:#08090C; --s1:#101218; --s2:#181B24; --line:#252A36;
+    --tx:#F4F6FA; --ink-mute:#9AA3B5; --blue:#2D7BFF; --blue-d:#1F63DB; --danger:#E5484D;
   }
   *{box-sizing:border-box;}
-  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Cairo', sans-serif;}
-  .wrap{max-width:1160px; margin:0 auto; padding:28px 32px 60px;}
+  body{margin:0; background:var(--bg); color:var(--tx); font-family:'Readex Pro', sans-serif; line-height:1.7; -webkit-font-smoothing:antialiased;}
+  :focus-visible{outline:3px solid var(--blue); outline-offset:2px;}
+  .wrap{max-width:1240px; margin:0 auto; padding:24px 28px 60px;}
 
   header{display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; flex-wrap:wrap; gap:12px;}
-  .logo{display:flex; align-items:center; gap:9px; font-size:22px; font-weight:800;}
-  .logo .dot{width:9px; height:9px; border-radius:2px; background:var(--teal); display:inline-block;}
-  .badge{font-size:13px; color:var(--ink-mute); background:var(--paper-raised); border:1px solid var(--line); padding:7px 14px; border-radius:5px;}
-  .badge strong{color:var(--ink);}
+  .logo{display:flex; align-items:center; gap:10px; font-size:20px; font-weight:700;}
+  .logo i{width:34px; height:34px; border-radius:9px; background:var(--blue); display:grid; place-items:center; font-style:normal; font-size:17px;}
+  .badge{font-size:13px; color:var(--ink-mute); background:var(--s1); border:1px solid var(--line); padding:7px 16px; border-radius:999px;}
+  .badge strong{color:var(--tx); font-size:15px; margin-inline-start:4px;}
 
   .lock-screen{
-    max-width:360px; margin:120px auto; text-align:center;
-    background:var(--paper-raised); border:1px solid var(--line); border-radius:6px; padding:36px 28px;
+    max-width:380px; margin:120px auto; text-align:center;
+    background:var(--s1); border:1px solid var(--line); border-radius:22px; padding:38px 30px;
+    box-shadow:0 30px 80px -30px rgba(45,123,255,.35);
   }
-  .lock-screen h2{font-size:22px; margin:0 0 8px;}
-  .lock-screen p{color:var(--ink-mute); font-size:14px; margin:0 0 18px;}
+  .lock-screen .ic{width:52px; height:52px; border-radius:14px; background:var(--blue); display:grid; place-items:center; margin:0 auto 16px; font-size:24px;}
+  .lock-screen h2{font-size:22px; margin:0 0 8px; font-weight:600;}
+  .lock-screen p{color:var(--ink-mute); font-size:14px; margin:0 0 20px; font-weight:300;}
   .lock-screen input{
-    width:100%; padding:12px 13px; border:1px solid var(--line); border-radius:5px;
-    font-size:15px; font-family:inherit; margin-bottom:12px; text-align:center;
+    width:100%; padding:13px 14px; border:1px solid var(--line); border-radius:12px;
+    font-size:15px; font-family:inherit; margin-bottom:12px; text-align:center; background:var(--bg); color:#fff;
   }
+  .lock-screen input:focus{border-color:var(--blue); outline:0;}
   .lock-screen button{
-    width:100%; padding:12px; background:var(--ink); color:#fff; border:none; border-radius:5px;
-    font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
+    width:100%; padding:13px; background:var(--blue); color:#fff; border:none; border-radius:12px;
+    font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s;
   }
-  .lock-screen .err{color:#B3402A; font-size:13px; margin-top:10px; min-height:16px;}
+  .lock-screen button:hover{background:var(--blue-d);}
+  .lock-screen .err{color:#FF7A80; font-size:13px; margin-top:10px; min-height:16px;}
 
   #dashboard{display:none;}
   #dashboard.show{display:block;}
 
-  /* كارت التتبع المباشر للسائق */
-  .tracking-card {
-    background: var(--paper-raised);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 16px 20px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
+  .tracking-card{
+    background:var(--s1); border:1px solid var(--line); border-radius:18px;
+    padding:18px 22px; margin-bottom:20px;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+    border-inline-start:4px solid var(--blue);
   }
-  .tracking-card h3 { margin: 0; font-size: 16px; }
-  .tracking-card p { margin: 4px 0 0; font-size: 13px; color: var(--ink-mute); }
-  .track-btn {
-    padding: 10px 20px;
-    background: #28a745;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 14.5px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background .2s;
+  .tracking-card h3{margin:0; font-size:16px; font-weight:600;}
+  .tracking-card p{margin:4px 0 0; font-size:13px; color:var(--ink-mute); font-weight:300;}
+  .track-btn{
+    padding:11px 22px; background:#2D7BFF; color:#fff; border:none; border-radius:12px;
+    font-size:14.5px; font-weight:600; cursor:pointer; font-family:inherit; transition:transform .15s;
   }
+  .track-btn:hover{transform:translateY(-1px);}
 
-  .layout{display:grid; grid-template-columns:1fr 380px; gap:20px; align-items:start;}
-  #adminMap{
-    height:620px; border-radius:6px; border:1px solid var(--line); direction:ltr;
-  }
-  .leaflet-container{font-family:'Cairo', sans-serif;}
+  .layout{display:grid; grid-template-columns:1fr 390px; gap:20px; align-items:start;}
+  #adminMap{height:640px; border-radius:18px; border:1px solid var(--line); direction:ltr;}
+  .leaflet-container{font-family:'Readex Pro', sans-serif;}
   .popup-name{font-weight:700; font-size:14px; margin-bottom:4px;}
   .popup-row{font-size:12.5px; color:#4B5566; margin-top:2px;}
 
   .list-panel{
-    background:var(--paper-raised); border:1px solid var(--line); border-radius:6px;
-    max-height:620px; overflow-y:auto; display:flex; flex-direction:column;
+    background:var(--s1); border:1px solid var(--line); border-radius:18px;
+    max-height:640px; overflow:hidden; display:flex; flex-direction:column;
   }
-
-  /* شريط عنوان قائمة الحجوزات بدلاً من أزرار التبويب */
-  .panel-header {
-    padding: 14px 18px;
-    background: #f8f9fa;
-    border-bottom: 1px solid var(--line);
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--ink);
-    position: sticky;
-    top: 0;
-    z-index: 10;
+  .panel-header{
+    padding:15px 20px; background:var(--s2); border-bottom:1px solid var(--line);
+    font-weight:600; font-size:14.5px; color:var(--tx);
   }
-
-  .booking-list-container {
-    overflow-y: auto;
-    flex: 1;
-  }
-
-  .list-empty{padding:28px 20px; color:var(--ink-mute); font-size:14px; text-align:center;}
+  .booking-list-container{overflow-y:auto; flex:1;}
+  .list-empty{padding:30px 20px; color:var(--ink-mute); font-size:14px; text-align:center;}
   .booking-row{
-    padding:14px 18px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .12s, opacity .2s;
-    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding:15px 20px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .12s;
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
   }
-  .booking-row:hover{background:#F6F5F1;}
+  .booking-row:hover{background:var(--s2);}
   .booking-row:last-child{border-bottom:none;}
-  .booking-row .name{font-weight:700; font-size:14.5px;}
-  .booking-row .meta{font-size:12.5px; color:var(--ink-mute); margin-top:4px; line-height:1.6;}
+  .booking-row .name{font-weight:600; font-size:14.5px;}
+  .booking-row .meta{font-size:12.5px; color:var(--ink-mute); margin-top:4px; line-height:1.7;}
+  .booking-row .meta strong{color:var(--tx); font-weight:500;}
 
-  .check-btn {
-    padding: 6px 12px;
-    border-radius: 5px;
-    font-size: 12.5px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    white-space: nowrap;
-    transition: all .15s ease;
+  .check-btn{
+    padding:8px 14px; border-radius:10px; font-size:12.5px; font-weight:600; cursor:pointer;
+    font-family:inherit; white-space:nowrap; transition:background .15s;
   }
+  .check-btn:hover{background:var(--blue-d)!important;}
 
   .refresh-btn{
-    background:var(--teal); color:#fff; border:none; padding:9px 16px; border-radius:5px;
-    font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;
+    background:var(--blue); color:#fff; border:none; padding:10px 18px; border-radius:12px;
+    font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; text-decoration:none; transition:background .15s;
   }
-  .refresh-btn:hover{background:#155457;}
+  .refresh-btn:hover{background:var(--blue-d);}
+  .refresh-btn.ghost{background:transparent; border:1px solid var(--line); color:var(--tx);}
+  .refresh-btn.ghost:hover{border-color:#4A5164;}
 
   @media (max-width:900px){
     .layout{grid-template-columns:1fr;}
-    #adminMap{height:400px;}
-    .tracking-card { flex-direction: column; text-align: center; }
-    .track-btn { width: 100%; }
+    #adminMap{height:420px;}
+    .tracking-card{flex-direction:column; text-align:center;}
+    .track-btn{width:100%;}
+    .wrap{padding:18px 16px 50px;}
   }
 </style>
 </head>
 <body>
 
 <div class="lock-screen" id="lockScreen">
+  <div class="ic">🔒</div>
   <h2>لوحة المشرف</h2>
   <p>الصفحة دي لصاحب المشروع بس. اكتب كلمة المرور للدخول.</p>
   <input type="password" id="pwInput" placeholder="كلمة المرور اليومية">
@@ -153,10 +127,10 @@
 
 <div class="wrap" id="dashboard">
   <header>
-    <div class="logo"><span class="dot"></span>The Way — لوحة المشرف</div>
-    <div style="display:flex; align-items:center; gap:12px;">
-      <span class="badge">عدد الحجوزات النشطة: <strong id="countBadge">0</strong></span>
-      <a id="fullRouteBtn" class="refresh-btn" style="text-decoration:none; background:var(--ink);" href="#" target="_blank" rel="noopener">فتح خط السير في خرائط جوجل</a>
+    <div class="logo"><i>🚌</i>The Way — لوحة المشرف</div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span class="badge">الحجوزات النشطة <strong id="countBadge">0</strong></span>
+      <a id="fullRouteBtn" class="refresh-btn ghost" href="#" target="_blank" rel="noopener">فتح خط السير في خرائط جوجل</a>
       <button class="refresh-btn" onclick="loadBookings()">تحديث</button>
     </div>
   </header>
@@ -299,12 +273,12 @@
 
       isTracking = true;
       btn.innerText = '🛑 إيقاف مشاركة الموقع';
-      btn.style.background = '#dc3545';
+      btn.style.background = '#E5484D';
     } else {
       if (watchId) navigator.geolocation.clearWatch(watchId);
       isTracking = false;
       btn.innerText = '🚀 بدء مشاركة الموقع اللحظي';
-      btn.style.background = '#28a745';
+      btn.style.background = '#2D7BFF';
       statusText.innerText = 'تم إيقاف التتبع';
     }
   }
@@ -350,12 +324,12 @@
 
     STOPS.forEach(stop => {
       L.marker([stop.lat, stop.lng], {
-        icon: L.divIcon({ className:'', html:'<div style="width:14px;height:14px;border-radius:50%;background:#F2A900;border:2px solid #0B1020;"></div>', iconSize:[14,14] })
+        icon: L.divIcon({ className:'', html:'<div style="width:14px;height:14px;border-radius:50%;background:#2D7BFF;border:2px solid #08090C;"></div>', iconSize:[14,14] })
       }).addTo(map).bindTooltip(stop.name, { permanent:true, direction:'top', offset:[0,-6] });
     });
 
     L.marker([DESTINATION.lat, DESTINATION.lng], {
-      icon: L.divIcon({ className:'', html:'<div style="width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px #F2A900;"></div>', iconSize:[16,16] })
+      icon: L.divIcon({ className:'', html:'<div style="width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px #2D7BFF;"></div>', iconSize:[16,16] })
     }).addTo(map).bindTooltip('جامعة النيل (الوجهة)', { permanent:true, direction:'top', offset:[0,-6] });
 
     markersLayer = L.layerGroup().addTo(map);
@@ -369,7 +343,7 @@
       .then(data => {
         if (data.routes && data.routes[0]) {
           routeLatLngs = data.routes[0].geometry.coordinates.map(c => L.latLng(c[1], c[0]));
-          L.polyline(routeLatLngs, { color:'#1B6E71', weight:4, opacity:0.9 }).addTo(map);
+          L.polyline(routeLatLngs, { color:'#2D7BFF', weight:4, opacity:0.9 }).addTo(map);
           loadBookings();
         }
       })
@@ -440,7 +414,7 @@
         const marker = L.marker([lat, lng], {
           icon: L.divIcon({ 
             className:'', 
-            html:`<div style="width:16px;height:16px;border-radius:50%;background:#12182B;border:2px solid #fff;box-shadow:0 0 0 2px #12182B;"></div>`, 
+            html:`<div style="width:16px;height:16px;border-radius:50%;background:#08090C;border:2px solid #fff;box-shadow:0 0 0 2px #2D7BFF;"></div>`, 
             iconSize:[16,16] 
           })
         });
@@ -449,7 +423,7 @@
            <div class="popup-row">الهاتف: ${escapeHtml(b.phone)}</div>
            <div class="popup-row">الصعود: ${escapeHtml(b.pickup)}</div>
            <div class="popup-row">الوجهة: ${escapeHtml(b.dropoff)} · الموعد: ${escapeHtml(b.time)}</div>
-           <a href="${googleMapsLink(lat, lng)}" target="_blank" rel="noopener" style="display:inline-block; margin-top:8px; font-size:12.5px; font-weight:700; color:#1B6E71;">فتح في خرائط جوجل ←</a>`
+           <a href="${googleMapsLink(lat, lng)}" target="_blank" rel="noopener" style="display:inline-block; margin-top:8px; font-size:12.5px; font-weight:700; color:#1F63DB;">فتح في خرائط جوجل ←</a>`
         );
         marker.addTo(markersLayer);
         bounds.push([lat, lng]);
@@ -465,12 +439,12 @@
             📍 <strong>${escapeHtml(b.pickup)}</strong> ← ${escapeHtml(b.dropoff)}<br>
             ⏰ الموعد: ${escapeHtml(b.time)}
           </div>
-          ${hasCoords ? `<a href="${googleMapsLink(lat, lng)}" target="_blank" rel="noopener" style="display:inline-block; margin-top:6px; font-size:12px; font-weight:700; color:#1B6E71; text-decoration:none;" onclick="event.stopPropagation();">فتح في خرائط جوجل ←</a>` : ''}
+          ${hasCoords ? `<a href="${googleMapsLink(lat, lng)}" target="_blank" rel="noopener" style="display:inline-block; margin-top:6px; font-size:12px; font-weight:600; color:#5B9BFF; text-decoration:none;" onclick="event.stopPropagation();">فتح في خرائط جوجل ←</a>` : ''}
         </div>
         <div>
           <button class="check-btn" 
                   onclick="event.stopPropagation(); toggleTripCompletion(${b.id})" 
-                  style="border: 1px solid #28a745; background: #28a745; color: #fff;">
+                  style="border: 1px solid #2D7BFF; background: #2D7BFF; color: #fff;">
             ✅ تم الالتقاط
           </button>
         </div>
